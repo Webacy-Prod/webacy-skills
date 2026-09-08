@@ -8,6 +8,10 @@ on:
     - cron: "0 6 * * 1" # weekly, Mondays 06:00 UTC
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -17,6 +21,7 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      - run: npm test
       - name: Regenerate artifacts
         run: node scripts/build.mjs
         env:
