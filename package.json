@@ -1,0 +1,16 @@
+{
+  "name": "webacy-skills",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agent-agnostic packaging of the Webacy MCP risk engine: connection configs for every MCP client plus a portable agent guide.",
+  "license": "MIT",
+  "author": "Webacy",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "yaml": "^2.9.0"
+  }
+}
