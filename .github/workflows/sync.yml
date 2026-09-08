@@ -1,0 +1,39 @@
+name: sync
+
+# Regenerates the generated client artifacts (skills/webacy/SKILL.md, AGENTS.md)
+# from the live Webacy MCP tool list. Requires a repository secret WEBACY_API_KEY.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm test
+      - name: Regenerate artifacts
+        run: node scripts/build.mjs
+        env:
+          WEBACY_API_KEY: ${{ secrets.WEBACY_API_KEY }}
+      - name: Open PR on drift
+        uses: peter-evans/create-pull-request@v6
+        with:
+          title: "chore: sync Webacy tools + regenerate client artifacts"
+          commit-message: "chore: sync Webacy tools + regenerate client artifacts"
+          branch: chore/sync-webacy-tools
+          body: |
+            Automated regeneration of the generated client artifacts from the live
+            Webacy MCP tool list (`api.webacy.com/mcp`).
+
+            Requires the `WEBACY_API_KEY` repository secret.

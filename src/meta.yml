@@ -1,0 +1,6 @@
+name: webacy
+description: >-
+  Assess onchain risk with Webacy - wallet/address risk, token risk, sanctions
+  exposure, smart-contract analysis, token holder (sniper/bundler) analysis, and
+  DeFi vault + RWA/stablecoin risk. Use whenever an address, token, contract, or
+  vault needs a security or risk check.
