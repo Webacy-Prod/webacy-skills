@@ -3,7 +3,11 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { renderToolsTable, injectTools } from "../scripts/build.mjs";
+import {
+  renderToolsTable,
+  injectTools,
+  collectTools,
+} from "../scripts/build.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -34,6 +38,33 @@ test("renderToolsTable caps long descriptions", () => {
   const row = renderToolsTable([{ name: "t", description: long }]).split("\n")[2];
   assert.ok(row.length < long.length);
   assert.ok(row.includes("…"));
+});
+
+test("renderToolsTable escapes backslashes so a literal \\| is not a delimiter", () => {
+  const row = renderToolsTable([{ name: "t", description: "a \\| b" }]).split("\n")[2];
+  // strip every escaped pair; only the 3 real cell delimiters should remain
+  const realDelimiters = row.replace(/\\./g, "").match(/\|/g).length;
+  assert.equal(realDelimiters, 3);
+});
+
+test("collectTools follows nextCursor across pages", async () => {
+  const pages = [
+    { tools: [{ name: "a" }], nextCursor: "c1" },
+    { tools: [{ name: "b" }, { name: "c" }], nextCursor: undefined },
+  ];
+  let i = 0;
+  const seen = [];
+  const listTools = async (params) => {
+    seen.push(params);
+    return pages[i++];
+  };
+  const tools = await collectTools(listTools);
+  assert.deepEqual(
+    tools.map((t) => t.name),
+    ["a", "b", "c"],
+  );
+  // first call has no cursor, second passes the cursor from page 1
+  assert.deepEqual(seen, [undefined, { cursor: "c1" }]);
 });
 
 test("injectTools replaces the marker block and preserves the markers", () => {

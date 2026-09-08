@@ -48,13 +48,25 @@ async function fetchTools() {
 
   try {
     await client.connect(transport);
-    const { tools } = await client.listTools();
-    return tools ?? [];
+    return await collectTools((params) => client.listTools(params));
   } catch (err) {
     fail(`failed to fetch tools from ${ENDPOINT}: ${err?.message ?? err}`);
   } finally {
     await client.close().catch(() => {});
   }
+}
+
+// tools/list is paginated; follow nextCursor until it is exhausted so no tool
+// is dropped when the server splits the list across pages.
+async function collectTools(listTools) {
+  const tools = [];
+  let cursor;
+  do {
+    const page = await listTools(cursor !== undefined ? { cursor } : undefined);
+    tools.push(...(page.tools ?? []));
+    cursor = page.nextCursor;
+  } while (cursor !== undefined);
+  return tools;
 }
 
 // Render a tool name as an inline code span safe inside a markdown table cell.
@@ -75,7 +87,10 @@ function renderDescription(description) {
     clean.length > MAX_DESCRIPTION
       ? `${clean.slice(0, MAX_DESCRIPTION - 1).trimEnd()}…`
       : clean;
-  return capped.replace(/\|/g, "\\|").replace(/`/g, "\\`");
+  return capped
+    .replace(/\\/g, "\\\\")
+    .replace(/\|/g, "\\|")
+    .replace(/`/g, "\\`");
 }
 
 function renderToolsTable(tools) {
@@ -163,7 +178,7 @@ async function main() {
   await writeIfChanged(p("AGENTS.md"), agents);
 }
 
-export { renderName, renderDescription, renderToolsTable, injectTools };
+export { renderName, renderDescription, renderToolsTable, injectTools, collectTools };
 
 const invokedDirectly =
   process.argv[1] &&
