@@ -28,6 +28,15 @@ is safe, risky, sanctioned, a scam, a honeypot, or trustworthy.
 
 <!-- TOOLS:START -->
 <!-- Auto-generated from api.webacy.com/mcp tools/list. Do not edit by hand. -->
+| Tool | Description |
+| --- | --- |
+| `get_address_risk` | Analyze the risk profile of a blockchain address (wallet or contract). Returns risk score, risk factors, and detailed security analysis. If the address is a stablecoin, RWA, or other pegged token (e.g. USDC, USDT, PYUSD, DAI), prefer get_rwa_token_risk, which adds depeg / peg-stability analysis. |
+| `get_holder_analysis` | Analyze the holder distribution and concentration of a token. Returns top holders, holder counts, and distribution metrics. |
+| `get_rwa_token_risk` | Depeg / peg-stability risk analysis for a stablecoin, RWA, or pegged token — e.g. USDC, USDT, PYUSD, DAI, USDe, tokenized treasuries or money-market funds (BUIDL), or commodity tokens (PAXG). PREFER THIS over get_token_risk whenever the asset is a stablecoin, RWA, or otherwise pegged. Returns risk… |
+| `get_token_risk` | Analyze the risk profile of a general token contract. Returns token security flags, market data, and economic risk indicators. For stablecoins, RWAs, or other pegged tokens (e.g. USDC, USDT, PYUSD, DAI), prefer get_rwa_token_risk, which adds depeg / peg-stability analysis. |
+| `get_vault_risk` | Get detailed risk analysis for an ERC-4626 vault. Returns risk score, risk tier, risk decomposition across 7 categories (structure, governance, liquidity, code quality, asset, performance, protocol), looping data, Morpho markets, and Webacy findings. Also returns the Webacy A+→F letter grade / rati… |
+| `list_rwa_tokens` | List RWA and pegged tokens (stablecoins) with depeg risk data. Returns paginated items with ecosystem aggregates (tier counts, denomination breakdown). Each item also carries the Webacy A+→F v3 composite letter grade / rating (\`grade\`), the same grade shown on dd.xyz, or null when the token is not… |
+| `list_vaults` | List ERC-4626 vaults with risk scores, filtering, and sorting. Returns paginated vault items with ecosystem aggregates (tier counts, TVL, highest risk, largest TVL). Each item also carries the Webacy A+→F v3 composite letter grade / rating (\`grade\`), the same grade shown on dd.xyz, or null when the… |
 <!-- TOOLS:END -->
 
 ## Reading results
