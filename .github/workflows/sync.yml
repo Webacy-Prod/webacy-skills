@@ -16,10 +16,10 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
       - run: npm ci
       - run: npm test
       - name: Regenerate artifacts
@@ -27,7 +27,7 @@ jobs:
         env:
           WEBACY_API_KEY: ${{ secrets.WEBACY_API_KEY }}
       - name: Open PR on drift
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           title: "chore: sync Webacy tools + regenerate client artifacts"
           commit-message: "chore: sync Webacy tools + regenerate client artifacts"
