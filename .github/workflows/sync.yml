@@ -17,6 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # don't leave the write-capable github.token in git config for the
+          # npm/node steps to read; create-pull-request uses its own token.
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: 22

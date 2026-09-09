@@ -24,4 +24,5 @@ should also go to the Webacy team via the channels above.
 
 Never commit a `WEBACY_API_KEY`. Get one at https://developers.webacy.co and
 store it as a local environment variable or a CI secret. The `.gitignore`
-already excludes `.env*` files.
+excludes `.env`, `.env.local`, and `.env*.local` — other `.env*` files (for
+example `.env.production`) are **not** ignored, so keep keys out of those too.
