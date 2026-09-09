@@ -10,6 +10,14 @@ import { dirname, join } from "node:path";
 const ENDPOINT = "https://api.webacy.com/mcp";
 // MCP protocol revision we advertise on the initialize handshake.
 const PROTOCOL_VERSION = "2025-06-18";
+// Revisions whose initialize + tools/list wire shape this client can drive. If
+// the server negotiates anything outside this set we disconnect rather than
+// speak an incompatible protocol.
+const SUPPORTED_PROTOCOL_VERSIONS = new Set([
+  "2025-06-18",
+  "2025-03-26",
+  "2024-11-05",
+]);
 const TOOLS_START = "<!-- TOOLS:START -->";
 const TOOLS_END = "<!-- TOOLS:END -->";
 const GENERATED_COMMENT =
@@ -124,6 +132,8 @@ async function fetchTools() {
     const message = await readJsonRpc(res, payload.id);
     if (message.error)
       fail(`${method} -> MCP error ${message.error.code}: ${message.error.message}`);
+    if (!("result" in message))
+      fail(`${method} -> malformed JSON-RPC response from ${ENDPOINT} (no result)`);
     return message.result;
   };
 
@@ -132,7 +142,15 @@ async function fetchTools() {
     capabilities: {},
     clientInfo: { name: "webacy-skills-build", version: "1.0.0" },
   });
-  if (init?.protocolVersion) protocolVersion = init.protocolVersion;
+  // The server answers with the revision it will use. Only adopt it if we can
+  // actually drive that revision; otherwise disconnect (per the MCP lifecycle).
+  const serverVersion = init?.protocolVersion;
+  if (serverVersion && !SUPPORTED_PROTOCOL_VERSIONS.has(serverVersion))
+    fail(
+      `${ENDPOINT} negotiated unsupported MCP revision ${serverVersion} ` +
+        `(client supports ${[...SUPPORTED_PROTOCOL_VERSIONS].join(", ")})`,
+    );
+  if (serverVersion) protocolVersion = serverVersion;
   await rpc("notifications/initialized", undefined, { notification: true });
 
   return collectTools((cursor) =>
