@@ -9,9 +9,5 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node --test"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
-    "yaml": "^2.9.0"
   }
 }

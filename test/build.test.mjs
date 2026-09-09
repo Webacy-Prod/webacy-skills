@@ -7,6 +7,7 @@ import {
   renderToolsTable,
   injectTools,
   collectTools,
+  parseSseMessages,
 } from "../scripts/build.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -54,17 +55,29 @@ test("collectTools follows nextCursor across pages", async () => {
   ];
   let i = 0;
   const seen = [];
-  const listTools = async (params) => {
-    seen.push(params);
+  const listPage = async (cursor) => {
+    seen.push(cursor);
     return pages[i++];
   };
-  const tools = await collectTools(listTools);
+  const tools = await collectTools(listPage);
   assert.deepEqual(
     tools.map((t) => t.name),
     ["a", "b", "c"],
   );
   // first call has no cursor, second passes the cursor from page 1
-  assert.deepEqual(seen, [undefined, { cursor: "c1" }]);
+  assert.deepEqual(seen, [undefined, "c1"]);
+});
+
+test("parseSseMessages extracts JSON-RPC messages from an SSE body", () => {
+  const raw =
+    ": keep-alive\n\n" +
+    'event: message\ndata: {"jsonrpc":"2.0","id":1,"result":{"tools":[]}}\n\n' +
+    'data: {"jsonrpc":"2.0",\ndata: "id":2,"result":{"ok":true}}\n\n';
+  const messages = parseSseMessages(raw);
+  assert.equal(messages.length, 2); // keep-alive comment ignored
+  assert.equal(messages[0].id, 1);
+  assert.deepEqual(messages[0].result.tools, []);
+  assert.equal(messages[1].id, 2); // multi-line data joined with newline
 });
 
 test("injectTools replaces the marker block and preserves the markers", () => {
