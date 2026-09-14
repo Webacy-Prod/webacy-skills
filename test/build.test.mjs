@@ -363,6 +363,8 @@ test("build-x402.mjs exits non-zero when the spec has zero x402 endpoints", asyn
     // execFile (not the sync variant): the child must reach back over HTTP to
     // the server above, which is running in this same process/event loop -- a
     // *Sync spawn would block that loop and the request would never be served.
+    // Match the specific guard message, not just any failure -- an unrelated
+    // crash (syntax error, startup failure) must not pass this test.
     await assert.rejects(
       execFileAsync("node", [join(ROOT, "scripts/build-x402.mjs")], {
         env: {
@@ -370,6 +372,7 @@ test("build-x402.mjs exits non-zero when the spec has zero x402 endpoints", asyn
           WEBACY_OPENAPI_URL: `http://127.0.0.1:${port}/openapi.json`,
         },
       }),
+      (err) => /has zero x402 endpoints; refusing to publish an empty skill/.test(err.stderr),
     );
   } finally {
     await new Promise((resolve) => server.close(resolve));
