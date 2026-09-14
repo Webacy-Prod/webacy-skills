@@ -24,6 +24,7 @@ const GENERATED_COMMENT =
   "<!-- Auto-generated from docs.webacy.com/openapi.json. Do not edit by hand. -->";
 const MAX_DESCRIPTION = 300;
 const HTTP_METHODS = new Set(["get", "post", "put", "patch", "delete"]);
+const X402_RESPONSE_REF = "#/components/responses/X402PaymentRequired";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const p = (...parts) => join(ROOT, ...parts);
@@ -44,10 +45,10 @@ async function fetchOpenApiSpec() {
 }
 
 // A 402 response is x402-payable when it references the X402PaymentRequired
-// component via $ref (how the spec always expresses it today).
+// component via $ref, by exact path -- substring matching would also accept
+// a near-miss like #/components/responses/NotX402PaymentRequired.
 function isX402Response(response) {
-  if (!response || typeof response.$ref !== "string") return false;
-  return response.$ref.includes("X402PaymentRequired");
+  return Boolean(response) && response.$ref === X402_RESPONSE_REF;
 }
 
 // Collect { method, path, summary } for every operation whose 402 response is

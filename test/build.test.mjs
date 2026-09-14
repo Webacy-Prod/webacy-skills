@@ -140,6 +140,11 @@ test("isX402Response only matches a $ref to X402PaymentRequired", () => {
     isX402Response({ $ref: "#/components/responses/SomethingElse" }),
     false,
   );
+  // near-match: a differently named response must not be treated as payable
+  assert.equal(
+    isX402Response({ $ref: "#/components/responses/NotX402PaymentRequired" }),
+    false,
+  );
   assert.equal(isX402Response({ description: "plain 402, no ref" }), false);
   assert.equal(isX402Response(undefined), false);
 });

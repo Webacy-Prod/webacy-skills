@@ -16,9 +16,12 @@ Signing is done by a Base wallet or an x402 client library (e.g. `x402-fetch`,
 2. **Decode** that header to JSON and read `accepts[0]`: `scheme` (`exact`), `network`
    (`eip155:8453`, Base mainnet), `amount` (USDC, 6-decimal base units), `asset` (the
    USDC contract address on Base), `payTo` (the deposit address), and
-   `maxTimeoutSeconds`. An `extensions.bazaar` block additionally carries the
-   endpoint's input/output JSON schema and a `routeTemplate`, for generic x402
-   clients that discover endpoints rather than reading this table.
+   `maxTimeoutSeconds`. Some endpoints additionally include an `extensions.bazaar`
+   block with the endpoint's input/output JSON schema and a `routeTemplate`, for
+   generic x402 clients that discover endpoints rather than reading this table — it
+   is not present on every response (e.g. `/addresses/{address}` has it,
+   `/transactions/{txHash}` does not, as of this writing), so check for it rather
+   than assuming it.
 3. **Pay** `amount` of `asset` to `payTo` on Base.
 4. **Retry** the identical request with a `PAYMENT-SIGNATURE` header carrying the
    signed payment proof. The response unlocks the resource and returns an
@@ -31,7 +34,7 @@ Signing is done by a Base wallet or an x402 client library (e.g. `x402-fetch`,
 
 | Header | Direction | Purpose |
 | --- | --- | --- |
-| `PAYMENT-REQUIRED` | Response (402) | Base64-encoded JSON payment challenge: the `accepts` array and the `bazaar` schema/route info. |
+| `PAYMENT-REQUIRED` | Response (402) | Base64-encoded JSON payment challenge: the `accepts` array and, on some endpoints, a `bazaar` schema/route info block. |
 | `PAYMENT-SIGNATURE` | Request | Signed proof of on-chain payment, sent on retry. |
 | `x-credit-token` | Both | Bearer token for a prepaid CU balance; send it back to spend the balance instead of paying again. |
 | `x-credit-balance-cu` | Response | Compute Units remaining on the token after the call. |
