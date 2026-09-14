@@ -9,6 +9,12 @@ import {
   collectTools,
   parseSseMessages,
 } from "../scripts/build.mjs";
+import { renderTable, injectBetweenMarkers } from "../scripts/lib.mjs";
+import {
+  isX402Response,
+  collectX402Endpoints,
+  renderEndpointsTable,
+} from "../scripts/build-x402.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -101,4 +107,83 @@ test("build.mjs exits non-zero without WEBACY_API_KEY", () => {
       stdio: "pipe",
     }),
   );
+});
+
+test("renderTable builds a header, separator, and row lines", () => {
+  const table = renderTable(["A", "B"], ["| 1 | 2 |"]);
+  assert.deepEqual(table.split("\n"), ["| A | B |", "| --- | --- |", "| 1 | 2 |"]);
+});
+
+test("injectBetweenMarkers replaces the marker block and preserves the markers", () => {
+  const text = "# G\n\n<!-- X:START -->\nold\n<!-- X:END -->\n\ntail";
+  const out = injectBetweenMarkers(text, "<!-- X:START -->", "<!-- X:END -->", "new");
+  assert.ok(out.includes("<!-- X:START -->"));
+  assert.ok(out.includes("<!-- X:END -->"));
+  assert.ok(out.includes("new"));
+  assert.ok(!out.includes("old"));
+  assert.ok(out.includes("tail"));
+});
+
+test("injectBetweenMarkers throws when the markers are missing", () => {
+  assert.throws(
+    () => injectBetweenMarkers("no markers here", "<!-- A -->", "<!-- B -->", "x"),
+    /markers/,
+  );
+});
+
+test("isX402Response only matches a $ref to X402PaymentRequired", () => {
+  assert.equal(
+    isX402Response({ $ref: "#/components/responses/X402PaymentRequired" }),
+    true,
+  );
+  assert.equal(
+    isX402Response({ $ref: "#/components/responses/SomethingElse" }),
+    false,
+  );
+  assert.equal(isX402Response({ description: "plain 402, no ref" }), false);
+  assert.equal(isX402Response(undefined), false);
+});
+
+test("collectX402Endpoints picks only paths whose 402 references X402PaymentRequired", () => {
+  const spec = {
+    paths: {
+      "/b": {
+        get: {
+          summary: "B",
+          responses: { "402": { $ref: "#/components/responses/X402PaymentRequired" } },
+        },
+      },
+      "/a": {
+        post: {
+          summary: "A post",
+          responses: { "402": { $ref: "#/components/responses/X402PaymentRequired" } },
+        },
+        get: {
+          summary: "A get, not payable",
+          responses: { "402": { description: "plain 402" } },
+        },
+      },
+      "/c": {
+        get: {
+          summary: "No 402 at all",
+          responses: { "200": {} },
+        },
+      },
+    },
+  };
+  const endpoints = collectX402Endpoints(spec);
+  assert.deepEqual(
+    endpoints.map((e) => `${e.method} ${e.path}`),
+    ["POST /a", "GET /b"],
+  );
+});
+
+test("renderEndpointsTable escapes pipes/backticks in the description", () => {
+  const table = renderEndpointsTable([
+    { method: "GET", path: "/x", summary: "a | b `c`" },
+  ]);
+  const row = table.split("\n")[2];
+  assert.ok(row.includes("\\|"));
+  assert.ok(row.includes("\\`"));
+  assert.ok(row.startsWith("| GET | `/x` |"));
 });
