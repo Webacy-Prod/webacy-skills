@@ -52,9 +52,13 @@ Base (`eip155:8453`) with USDC only, today. Additional chains are planned.
 
 ## Endpoints
 
-Endpoints below accept x402 payment (identified in the OpenAPI spec by a `402`
-response referencing `X402PaymentRequired`); all are relative to
-`https://api.webacy.com`.
+The OpenAPI spec declares x402 payability for the endpoints below (a `402` response
+referencing `X402PaymentRequired`); all are relative to `https://api.webacy.com`.
+**Gateway rollout can lag the published spec** — as of this writing, some listed
+endpoints (e.g. list/aggregate routes like `/rwa`, `/vaults`, `/tokens/trending`)
+return `401 Unauthorized` instead of `402 Payment Required`. A `401` on a listed
+endpoint means x402 isn't gateway-enabled there yet, not a malformed request — retry
+later or use an API key (the `webacy` MCP skill) for that endpoint in the meantime.
 
 <!-- ENDPOINTS:START -->
 <!-- ENDPOINTS:END -->
@@ -75,6 +79,8 @@ response referencing `X402PaymentRequired`); all are relative to
 - A 402 with no `PAYMENT-REQUIRED` header (plain JSON, `"error": "Subscription
   payment required"`) means an API-key caller's subscription is past due - this is
   not the x402 challenge and paying again won't fix it.
+- A `401` on an endpoint listed below means x402 isn't gateway-enabled there yet
+  (see "Endpoints") - it is not a bad request or a bad payment.
 - Bad input comes back as a 4xx error describing the fix - retry with corrected
   arguments instead of giving up.
 - Never fabricate a score if a request failed - report the failure plainly.

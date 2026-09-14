@@ -17,12 +17,14 @@ import {
   writeIfChanged,
 } from "./lib.mjs";
 
-const OPENAPI_URL = "https://docs.webacy.com/openapi.json";
+// Overridable so tests can point this at a local spec without touching the
+// live public one.
+const OPENAPI_URL =
+  process.env.WEBACY_OPENAPI_URL || "https://docs.webacy.com/openapi.json";
 const ENDPOINTS_START = "<!-- ENDPOINTS:START -->";
 const ENDPOINTS_END = "<!-- ENDPOINTS:END -->";
 const GENERATED_COMMENT =
   "<!-- Auto-generated from docs.webacy.com/openapi.json. Do not edit by hand. -->";
-const MAX_DESCRIPTION = 300;
 const HTTP_METHODS = new Set(["get", "post", "put", "patch", "delete"]);
 const X402_RESPONSE_REF = "#/components/responses/X402PaymentRequired";
 
@@ -74,8 +76,7 @@ function collectX402Endpoints(spec) {
 
 function renderEndpointsTable(endpoints) {
   const rows = endpoints.map(
-    (e) =>
-      `| ${e.method} | ${renderName(e.path)} | ${renderDescription(e.summary, MAX_DESCRIPTION)} |`,
+    (e) => `| ${e.method} | ${renderName(e.path)} | ${renderDescription(e.summary)} |`,
   );
   return renderTable(["Method", "Path", "Description"], rows);
 }

@@ -32,7 +32,6 @@ const GENERATED_COMMENT =
   "<!-- Auto-generated from api.webacy.com/mcp tools/list. Do not edit by hand. -->";
 const CONNECT_INTRO =
   "All clients connect to `https://api.webacy.com/mcp` with an `x-api-key` header. Get a key at https://developers.webacy.co.";
-const MAX_DESCRIPTION = 300;
 
 // Fixed client order for the "How to connect" section. main() asserts this
 // covers every file in src/connect so a new client can never be silently dropped.
@@ -178,7 +177,7 @@ async function collectTools(listPage) {
 function renderToolsTable(tools) {
   const sorted = [...tools].sort((a, b) => a.name.localeCompare(b.name));
   const rows = sorted.map(
-    (t) => `| ${renderName(t.name)} | ${renderDescription(t.description, MAX_DESCRIPTION)} |`,
+    (t) => `| ${renderName(t.name)} | ${renderDescription(t.description)} |`,
   );
   return renderTable(["Tool", "Description"], rows);
 }

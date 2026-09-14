@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
@@ -17,6 +19,7 @@ import {
 } from "../scripts/build-x402.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const execFileAsync = promisify(execFile);
 
 test("renderToolsTable escapes pipes/backticks, collapses whitespace, keeps columns", () => {
   const table = renderToolsTable([
@@ -191,4 +194,31 @@ test("renderEndpointsTable escapes pipes/backticks in the description", () => {
   assert.ok(row.includes("\\|"));
   assert.ok(row.includes("\\`"));
   assert.ok(row.startsWith("| GET | `/x` |"));
+});
+
+test("build-x402.mjs exits non-zero when the spec has zero x402 endpoints", async () => {
+  const emptySpec = JSON.stringify({
+    paths: { "/x": { get: { summary: "no payment here", responses: { "200": {} } } } },
+  });
+  const server = createServer((_req, res) => {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(emptySpec);
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const { port } = server.address();
+    // execFile (not the sync variant): the child must reach back over HTTP to
+    // the server above, which is running in this same process/event loop -- a
+    // *Sync spawn would block that loop and the request would never be served.
+    await assert.rejects(
+      execFileAsync("node", [join(ROOT, "scripts/build-x402.mjs")], {
+        env: {
+          ...process.env,
+          WEBACY_OPENAPI_URL: `http://127.0.0.1:${port}/openapi.json`,
+        },
+      }),
+    );
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
