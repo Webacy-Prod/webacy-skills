@@ -290,6 +290,12 @@ test("build-x402.mjs splits live vs. not-live endpoints from live probe results 
           responses: { "402": { $ref: "#/components/responses/X402PaymentRequired" } },
         },
       },
+      "/badchallenge": {
+        get: {
+          summary: "402 but not an x402 challenge",
+          responses: { "402": { $ref: "#/components/responses/X402PaymentRequired" } },
+        },
+      },
     },
   });
 
@@ -298,11 +304,21 @@ test("build-x402.mjs splits live vs. not-live endpoints from live probe results 
     res.end(fakeSpec);
   });
   const apiServer = createServer((req, res) => {
-    const status = req.url.startsWith("/live")
-      ? 402
-      : req.url.startsWith("/pending")
-        ? 401
-        : 403;
+    // /badchallenge: a real Webacy quirk -- a past-due API-key subscriber gets
+    // a plain-JSON 402 with no payment-required header, which is NOT the x402
+    // challenge. probeOne must not count that as live.
+    if (req.url.startsWith("/live")) {
+      res.writeHead(402, {
+        "content-type": "application/json",
+        "payment-required": Buffer.from('{"x402Version":2}').toString("base64"),
+      });
+      return res.end("{}");
+    }
+    if (req.url.startsWith("/badchallenge")) {
+      res.writeHead(402, { "content-type": "application/json" });
+      return res.end('{"error":"Subscription payment required"}');
+    }
+    const status = req.url.startsWith("/pending") ? 401 : 403;
     res.writeHead(status, { "content-type": "application/json" });
     res.end("{}");
   });
@@ -335,11 +351,17 @@ test("build-x402.mjs splits live vs. not-live endpoints from live probe results 
     assert.ok(liveSection.includes("/live"));
     assert.ok(!liveSection.includes("/pending"));
     assert.ok(!liveSection.includes("/excluded"));
+    assert.ok(!liveSection.includes("/badchallenge"));
 
     assert.ok(pendingSection.includes("/pending"));
     assert.ok(pendingSection.includes("401 - gateway pending"));
     assert.ok(pendingSection.includes("/excluded"));
     assert.ok(pendingSection.includes("403 - not available via x402"));
+    // a 402 with no payment-required header is not an x402 challenge -- must
+    // not be counted live, and must be flagged unverified, not silently
+    // dropped or mis-labeled as gateway-pending/excluded.
+    assert.ok(pendingSection.includes("/badchallenge"));
+    assert.ok(pendingSection.includes("unverified"));
   } finally {
     await Promise.all([
       new Promise((resolve) => specServer.close(resolve)),

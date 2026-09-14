@@ -143,6 +143,10 @@ async function probeOne(endpoint) {
       body: endpoint.method === "POST" ? "{}" : undefined,
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     });
+    // A 402 isn't necessarily the x402 challenge -- an authenticated caller
+    // with a past-due subscription gets a plain-JSON 402 with no
+    // payment-required header (see guide.md). Don't count that as live.
+    if (res.status === 402 && !res.headers.get("payment-required")) return "unknown";
     return classifyProbeStatus(res.status);
   } catch {
     // Network error, timeout, or abort -- we couldn't observe a status, so
