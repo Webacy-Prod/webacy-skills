@@ -52,16 +52,30 @@ Base (`eip155:8453`) with USDC only, today. Additional chains are planned.
 
 ## Endpoints
 
-The OpenAPI spec declares x402 payability for the endpoints below (a `402` response
-referencing `X402PaymentRequired`); all are relative to `https://api.webacy.com`.
-**Gateway rollout can lag the published spec** — as of this writing, some listed
-endpoints (e.g. list/aggregate routes like `/rwa`, `/vaults`, `/tokens/trending`)
-return `401 Unauthorized` instead of `402 Payment Required`. A `401` on a listed
-endpoint means x402 isn't gateway-enabled there yet, not a malformed request — retry
-later or use an API key (the `webacy` MCP skill) for that endpoint in the meantime.
+The OpenAPI spec declares these endpoints as x402-payable (a `402` response
+referencing `X402PaymentRequired`), all relative to `https://api.webacy.com`. **The
+spec can be ahead of the live gateway**, so at every generation this skill re-probes
+each declared endpoint (an unauthenticated request against production) and splits
+the list below by what was actually observed, not just what the spec claims.
+
+### Live now
+
+Verified to return `402 Payment Required` at last generation — use these with the
+flow above.
 
 <!-- ENDPOINTS:START -->
 <!-- ENDPOINTS:END -->
+
+### Spec-declared, not yet live
+
+The spec declares these as x402-payable, but the last probe got a different status:
+`401` means the gateway hasn't enabled x402 there yet (use an API key — the `webacy`
+MCP skill — for these in the meantime); `403` means the endpoint is explicitly
+excluded from keyless x402; `unverified` means the probe itself failed to get a clear
+answer (network hiccup, unexpected status) — don't read anything into it either way.
+
+<!-- PENDING_ENDPOINTS:START -->
+<!-- PENDING_ENDPOINTS:END -->
 
 ## Reading results
 
@@ -79,8 +93,8 @@ later or use an API key (the `webacy` MCP skill) for that endpoint in the meanti
 - A 402 with no `PAYMENT-REQUIRED` header (plain JSON, `"error": "Subscription
   payment required"`) means an API-key caller's subscription is past due - this is
   not the x402 challenge and paying again won't fix it.
-- A `401` on an endpoint listed below means x402 isn't gateway-enabled there yet
-  (see "Endpoints") - it is not a bad request or a bad payment.
+- A `401` on an endpoint in "Spec-declared, not yet live" means x402 isn't
+  gateway-enabled there yet - it is not a bad request or a bad payment.
 - Bad input comes back as a 4xx error describing the fix - retry with corrected
   arguments instead of giving up.
 - Never fabricate a score if a request failed - report the failure plainly.

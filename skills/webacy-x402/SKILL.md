@@ -61,13 +61,16 @@ Base (`eip155:8453`) with USDC only, today. Additional chains are planned.
 
 ## Endpoints
 
-The OpenAPI spec declares x402 payability for the endpoints below (a `402` response
-referencing `X402PaymentRequired`); all are relative to `https://api.webacy.com`.
-**Gateway rollout can lag the published spec** — as of this writing, some listed
-endpoints (e.g. list/aggregate routes like `/rwa`, `/vaults`, `/tokens/trending`)
-return `401 Unauthorized` instead of `402 Payment Required`. A `401` on a listed
-endpoint means x402 isn't gateway-enabled there yet, not a malformed request — retry
-later or use an API key (the `webacy` MCP skill) for that endpoint in the meantime.
+The OpenAPI spec declares these endpoints as x402-payable (a `402` response
+referencing `X402PaymentRequired`), all relative to `https://api.webacy.com`. **The
+spec can be ahead of the live gateway**, so at every generation this skill re-probes
+each declared endpoint (an unauthenticated request against production) and splits
+the list below by what was actually observed, not just what the spec claims.
+
+### Live now
+
+Verified to return `402 Payment Required` at last generation — use these with the
+flow above.
 
 <!-- ENDPOINTS:START -->
 <!-- Auto-generated from docs.webacy.com/openapi.json. Do not edit by hand. -->
@@ -79,34 +82,48 @@ later or use an API key (the `webacy` MCP skill) for that endpoint in the meanti
 | GET | `/addresses/sanctioned/{walletAddress}` | Check if Wallet Address is Sanctioned |
 | GET | `/contracts/{contractAddress}` | Get a real-time analysis for a given contract address |
 | GET | `/contracts/{contractAddress}/code-analysis` | Get only the source-code findings for a contract |
-| GET | `/contracts/{contractAddress}/source-code` | Get verified source code for a contract |
-| GET | `/holder-analysis/{address}` | Get detailed early holder analysis for a token |
 | GET | `/quick-profile/{walletAddress}` | Understand the Risk Profile / Risk Exposure of an Address |
-| GET | `/rwa` | List pegged tokens with depeg risk data and aggregates |
-| GET | `/rwa/{address}` | Get detailed depeg risk data for a specific pegged token |
-| GET | `/rwa/hci` | List Holder Concentration Index |
-| GET | `/rwa/supply` | List pegged-token supply flows (mint/burn velocity) |
-| GET | `/rwa/supply/{symbol}` | Get supply-flow detail for a single token by symbol |
-| POST | `/scan/{fromAddress}/eip712` | Scan EIP-712 Signed Message for Security Risks |
-| POST | `/scan/{fromAddress}/transactions` | Scan Raw EVM Transaction for Security Risks |
-| GET | `/tokens/{tokenAddress}` | Get Token Economic History |
-| GET | `/tokens/{tokenAddress}/pools` | Get Token Pools with Risk Assessment |
-| GET | `/tokens/pools/{poolAddress}` | Get Pool OHLCV Data with Risk Assessment |
-| GET | `/tokens/pools/trending` | Get Trending Pools with Risk Analysis |
-| GET | `/tokens/trending` | Get Trending Cryptocurrencies with Risk Analysis |
 | GET | `/trading-lite/{address}` | Get simplified token analysis with security indicators |
 | GET | `/transactions/{txHash}` | Risk Details for a Transaction |
 | POST | `/url` | Project URL Risk Analysis |
-| GET | `/v3/rwa/{address}` | Get v3 RWA / stablecoin risk detail (Webacy-native) |
-| POST | `/v3/rwa/batch/structural-health` | Batch structural-health for N RWA / stablecoin tokens |
-| GET | `/v3/rwa/grades` | List v3 RWA / stablecoin grades |
-| GET | `/v3/vaults/{address}` | Get v3 vault risk detail (Webacy-native) |
-| POST | `/v3/vaults/batch/grades` | Batch v3 vault composite grades |
-| GET | `/vaults` | List ERC-4626 Vaults with Risk Scores |
-| GET | `/vaults/{address}` | Get Vault Risk Detail |
-| GET | `/vaults/{address}/share-price-history` | Get Vault Share Price History |
-| GET | `/vaults/{address}/tvl-history` | Get Vault TVL History |
 <!-- ENDPOINTS:END -->
+
+### Spec-declared, not yet live
+
+The spec declares these as x402-payable, but the last probe got a different status:
+`401` means the gateway hasn't enabled x402 there yet (use an API key — the `webacy`
+MCP skill — for these in the meantime); `403` means the endpoint is explicitly
+excluded from keyless x402; `unverified` means the probe itself failed to get a clear
+answer (network hiccup, unexpected status) — don't read anything into it either way.
+
+<!-- PENDING_ENDPOINTS:START -->
+<!-- Auto-generated from docs.webacy.com/openapi.json. Do not edit by hand. -->
+| Method | Path | Status | Description |
+| --- | --- | --- | --- |
+| GET | `/contracts/{contractAddress}/source-code` | unverified (probe failed or returned an unexpected status) | Get verified source code for a contract |
+| GET | `/holder-analysis/{address}` | 401 - gateway pending | Get detailed early holder analysis for a token |
+| GET | `/rwa` | 401 - gateway pending | List pegged tokens with depeg risk data and aggregates |
+| GET | `/rwa/{address}` | 401 - gateway pending | Get detailed depeg risk data for a specific pegged token |
+| GET | `/rwa/hci` | 401 - gateway pending | List Holder Concentration Index |
+| GET | `/rwa/supply` | 401 - gateway pending | List pegged-token supply flows (mint/burn velocity) |
+| GET | `/rwa/supply/{symbol}` | 401 - gateway pending | Get supply-flow detail for a single token by symbol |
+| POST | `/scan/{fromAddress}/eip712` | 403 - not available via x402 | Scan EIP-712 Signed Message for Security Risks |
+| POST | `/scan/{fromAddress}/transactions` | 403 - not available via x402 | Scan Raw EVM Transaction for Security Risks |
+| GET | `/tokens/{tokenAddress}` | 401 - gateway pending | Get Token Economic History |
+| GET | `/tokens/{tokenAddress}/pools` | 401 - gateway pending | Get Token Pools with Risk Assessment |
+| GET | `/tokens/pools/{poolAddress}` | 401 - gateway pending | Get Pool OHLCV Data with Risk Assessment |
+| GET | `/tokens/pools/trending` | 401 - gateway pending | Get Trending Pools with Risk Analysis |
+| GET | `/tokens/trending` | 401 - gateway pending | Get Trending Cryptocurrencies with Risk Analysis |
+| GET | `/v3/rwa/{address}` | 401 - gateway pending | Get v3 RWA / stablecoin risk detail (Webacy-native) |
+| POST | `/v3/rwa/batch/structural-health` | 401 - gateway pending | Batch structural-health for N RWA / stablecoin tokens |
+| GET | `/v3/rwa/grades` | 401 - gateway pending | List v3 RWA / stablecoin grades |
+| GET | `/v3/vaults/{address}` | 401 - gateway pending | Get v3 vault risk detail (Webacy-native) |
+| POST | `/v3/vaults/batch/grades` | 401 - gateway pending | Batch v3 vault composite grades |
+| GET | `/vaults` | 401 - gateway pending | List ERC-4626 Vaults with Risk Scores |
+| GET | `/vaults/{address}` | 401 - gateway pending | Get Vault Risk Detail |
+| GET | `/vaults/{address}/share-price-history` | 401 - gateway pending | Get Vault Share Price History |
+| GET | `/vaults/{address}/tvl-history` | 401 - gateway pending | Get Vault TVL History |
+<!-- PENDING_ENDPOINTS:END -->
 
 ## Reading results
 
@@ -124,8 +141,8 @@ later or use an API key (the `webacy` MCP skill) for that endpoint in the meanti
 - A 402 with no `PAYMENT-REQUIRED` header (plain JSON, `"error": "Subscription
   payment required"`) means an API-key caller's subscription is past due - this is
   not the x402 challenge and paying again won't fix it.
-- A `401` on an endpoint listed below means x402 isn't gateway-enabled there yet
-  (see "Endpoints") - it is not a bad request or a bad payment.
+- A `401` on an endpoint in "Spec-declared, not yet live" means x402 isn't
+  gateway-enabled there yet - it is not a bad request or a bad payment.
 - Bad input comes back as a 4xx error describing the fix - retry with corrected
   arguments instead of giving up.
 - Never fabricate a score if a request failed - report the failure plainly.

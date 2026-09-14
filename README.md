@@ -20,8 +20,10 @@ This repo ships two skills, favoring no particular agent or UI:
   **generated**; do not edit by hand.
 - `scripts/build.mjs` — fetches the live MCP tool list and regenerates the `webacy`
   skill + `AGENTS.md`.
-- `scripts/build-x402.mjs` — fetches the public OpenAPI spec and regenerates the
-  `webacy-x402` skill.
+- `scripts/build-x402.mjs` — fetches the public OpenAPI spec, live-probes every
+  endpoint it declares as x402-payable (unauthenticated requests against
+  `api.webacy.com`; the spec can be ahead of the gateway), and regenerates the
+  `webacy-x402` skill split into endpoints verified live vs. not yet.
 - `scripts/lib.mjs` — pure helpers shared by both generators.
 
 ## Generated files
@@ -29,7 +31,9 @@ This repo ships two skills, favoring no particular agent or UI:
 Both skills are generated from `src/`; a weekly GitHub Action
 (`.github/workflows/sync.yml`) reruns both builds and opens a PR whenever the output
 drifts. `scripts/build.mjs` needs a `WEBACY_API_KEY` repository secret;
-`scripts/build-x402.mjs` needs nothing — the OpenAPI spec is public.
+`scripts/build-x402.mjs` needs no secret — the spec and the endpoints it probes are
+all unauthenticated — but it does make ~33 live requests against production, so it
+takes longer (seconds, not instant) than a pure static-file build.
 
 **Edit `src/`, never the generated files.**
 

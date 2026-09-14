@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync, execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createServer } from "node:http";
+import { readFile, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import {
@@ -16,6 +17,10 @@ import {
   isX402Response,
   collectX402Endpoints,
   renderEndpointsTable,
+  renderPendingTable,
+  buildProbeUrl,
+  classifyProbeStatus,
+  probeEndpoints,
 } from "../scripts/build-x402.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -194,6 +199,154 @@ test("renderEndpointsTable escapes pipes/backticks in the description", () => {
   assert.ok(row.includes("\\|"));
   assert.ok(row.includes("\\`"));
   assert.ok(row.startsWith("| GET | `/x` |"));
+});
+
+test("buildProbeUrl fills path params by name and appends a chain query", () => {
+  assert.equal(
+    buildProbeUrl("/addresses/{address}"),
+    "https://api.webacy.com/addresses/0x0000000000000000000000000000000000dEaD?chain=eth",
+  );
+  assert.equal(
+    buildProbeUrl("/transactions/{txHash}"),
+    `https://api.webacy.com/transactions/0x${"0".repeat(64)}?chain=eth`,
+  );
+  assert.equal(
+    buildProbeUrl("/rwa/supply/{symbol}"),
+    "https://api.webacy.com/rwa/supply/USDC?chain=eth",
+  );
+  // multiple params in one path
+  assert.equal(
+    buildProbeUrl("/scan/{fromAddress}/eip712"),
+    "https://api.webacy.com/scan/0x0000000000000000000000000000000000dEaD/eip712?chain=eth",
+  );
+});
+
+test("classifyProbeStatus maps the observed statuses seen in practice, else unknown", () => {
+  assert.equal(classifyProbeStatus(402), "live");
+  assert.equal(classifyProbeStatus(401), "pending");
+  assert.equal(classifyProbeStatus(403), "excluded");
+  assert.equal(classifyProbeStatus(404), "unknown"); // spec declares a route the backend doesn't serve
+  assert.equal(classifyProbeStatus(500), "unknown");
+});
+
+test("probeEndpoints attaches a status per endpoint via an injected probe, preserving order", async () => {
+  const endpoints = [
+    { method: "GET", path: "/a" },
+    { method: "GET", path: "/b" },
+    { method: "POST", path: "/c" },
+  ];
+  const seen = [];
+  const probe = async (endpoint) => {
+    seen.push(endpoint.path);
+    return { "/a": "live", "/b": "pending", "/c": "excluded" }[endpoint.path];
+  };
+  const results = await probeEndpoints(endpoints, { probe, delayMs: 0 });
+  assert.deepEqual(seen, ["/a", "/b", "/c"]);
+  assert.deepEqual(
+    results.map((e) => [e.path, e.status]),
+    [
+      ["/a", "live"],
+      ["/b", "pending"],
+      ["/c", "excluded"],
+    ],
+  );
+});
+
+test("renderPendingTable includes a status label and escapes pipes/backticks", () => {
+  const table = renderPendingTable([
+    { method: "GET", path: "/x", status: "pending", summary: "a | b `c`" },
+  ]);
+  const row = table.split("\n")[2];
+  assert.ok(row.includes("401 - gateway pending"));
+  assert.ok(row.includes("\\|"));
+  assert.ok(row.includes("\\`"));
+});
+
+test("renderPendingTable falls back to the unknown label for an unrecognized status", () => {
+  const table = renderPendingTable([
+    { method: "GET", path: "/x", status: "something-new", summary: "s" },
+  ]);
+  assert.ok(table.includes("unverified"));
+});
+
+test("build-x402.mjs splits live vs. not-live endpoints from live probe results end to end", async () => {
+  const fakeSpec = JSON.stringify({
+    paths: {
+      "/live": {
+        get: {
+          summary: "Live endpoint",
+          responses: { "402": { $ref: "#/components/responses/X402PaymentRequired" } },
+        },
+      },
+      "/pending": {
+        get: {
+          summary: "Pending endpoint",
+          responses: { "402": { $ref: "#/components/responses/X402PaymentRequired" } },
+        },
+      },
+      "/excluded": {
+        get: {
+          summary: "Excluded endpoint",
+          responses: { "402": { $ref: "#/components/responses/X402PaymentRequired" } },
+        },
+      },
+    },
+  });
+
+  const specServer = createServer((_req, res) => {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(fakeSpec);
+  });
+  const apiServer = createServer((req, res) => {
+    const status = req.url.startsWith("/live")
+      ? 402
+      : req.url.startsWith("/pending")
+        ? 401
+        : 403;
+    res.writeHead(status, { "content-type": "application/json" });
+    res.end("{}");
+  });
+
+  await Promise.all([
+    new Promise((resolve) => specServer.listen(0, "127.0.0.1", resolve)),
+    new Promise((resolve) => apiServer.listen(0, "127.0.0.1", resolve)),
+  ]);
+
+  const outputPath = join(ROOT, ".tmp-test-x402-skill.md");
+  try {
+    const { port: specPort } = specServer.address();
+    const { port: apiPort } = apiServer.address();
+    await execFileAsync("node", [join(ROOT, "scripts/build-x402.mjs")], {
+      env: {
+        ...process.env,
+        WEBACY_OPENAPI_URL: `http://127.0.0.1:${specPort}/openapi.json`,
+        WEBACY_API_BASE: `http://127.0.0.1:${apiPort}`,
+        WEBACY_X402_OUTPUT_PATH: outputPath,
+      },
+    });
+
+    const output = await readFile(outputPath, "utf8");
+    const liveSection = output.slice(
+      output.indexOf("<!-- ENDPOINTS:START -->"),
+      output.indexOf("<!-- ENDPOINTS:END -->"),
+    );
+    const pendingSection = output.slice(output.indexOf("<!-- PENDING_ENDPOINTS:START -->"));
+
+    assert.ok(liveSection.includes("/live"));
+    assert.ok(!liveSection.includes("/pending"));
+    assert.ok(!liveSection.includes("/excluded"));
+
+    assert.ok(pendingSection.includes("/pending"));
+    assert.ok(pendingSection.includes("401 - gateway pending"));
+    assert.ok(pendingSection.includes("/excluded"));
+    assert.ok(pendingSection.includes("403 - not available via x402"));
+  } finally {
+    await Promise.all([
+      new Promise((resolve) => specServer.close(resolve)),
+      new Promise((resolve) => apiServer.close(resolve)),
+    ]);
+    await rm(outputPath, { force: true });
+  }
 });
 
 test("build-x402.mjs exits non-zero when the spec has zero x402 endpoints", async () => {
