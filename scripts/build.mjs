@@ -2,10 +2,18 @@
 // Single source of truth -> generated client artifacts.
 // Fetches the live Webacy MCP tool list and regenerates skills/webacy/SKILL.md
 // and AGENTS.md. Canonical content lives in src/ -- edit that, not the outputs.
-import { readFile, writeFile, readdir } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import {
+  fail,
+  renderName,
+  renderDescription,
+  renderTable,
+  injectBetweenMarkers,
+  writeIfChanged,
+} from "./lib.mjs";
 
 const ENDPOINT = "https://api.webacy.com/mcp";
 // MCP protocol revision we advertise on the initialize handshake.
@@ -24,7 +32,6 @@ const GENERATED_COMMENT =
   "<!-- Auto-generated from api.webacy.com/mcp tools/list. Do not edit by hand. -->";
 const CONNECT_INTRO =
   "All clients connect to `https://api.webacy.com/mcp` with an `x-api-key` header. Get a key at https://developers.webacy.co.";
-const MAX_DESCRIPTION = 300;
 
 // Fixed client order for the "How to connect" section. main() asserts this
 // covers every file in src/connect so a new client can never be silently dropped.
@@ -38,11 +45,6 @@ const CONNECT_ORDER = [
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const p = (...parts) => join(ROOT, ...parts);
-
-function fail(msg) {
-  console.error(`build: ${msg}`);
-  process.exit(1);
-}
 
 // Parse a Server-Sent Events body into the JSON-RPC messages it carries.
 // Exported for testing; blank-line-separated events, `data:` payloads only.
@@ -172,63 +174,25 @@ async function collectTools(listPage) {
   return tools;
 }
 
-// Render a tool name as an inline code span safe inside a markdown table cell.
-// Pipes must be escaped even inside code spans; backticks need a longer fence.
-function renderName(name) {
-  const cell = String(name ?? "").replace(/\s+/g, " ").trim().replace(/\|/g, "\\|");
-  if (!cell.includes("`")) return `\`${cell}\``;
-  const longestRun = Math.max(...(cell.match(/`+/g) || [""]).map((r) => r.length));
-  const fence = "`".repeat(longestRun + 1);
-  return `${fence} ${cell} ${fence}`;
-}
-
-// Render a description as plain text safe inside a markdown table cell:
-// collapse whitespace, cap length, then escape table/markdown control chars.
-function renderDescription(description) {
-  const clean = String(description ?? "").replace(/\s+/g, " ").trim();
-  const capped =
-    clean.length > MAX_DESCRIPTION
-      ? `${clean.slice(0, MAX_DESCRIPTION - 1).trimEnd()}…`
-      : clean;
-  return capped
-    .replace(/\\/g, "\\\\")
-    .replace(/\|/g, "\\|")
-    .replace(/`/g, "\\`");
-}
-
 function renderToolsTable(tools) {
   const sorted = [...tools].sort((a, b) => a.name.localeCompare(b.name));
   const rows = sorted.map(
     (t) => `| ${renderName(t.name)} | ${renderDescription(t.description)} |`,
   );
-  return ["| Tool | Description |", "| --- | --- |", ...rows].join("\n");
+  return renderTable(["Tool", "Description"], rows);
 }
 
 function injectTools(guide, tableMarkdown) {
-  const start = guide.indexOf(TOOLS_START);
-  const end = guide.indexOf(TOOLS_END);
-  if (start === -1 || end === -1 || end < start)
-    throw new Error("src/guide.md is missing the TOOLS markers");
-  const before = guide.slice(0, start);
-  const after = guide.slice(end + TOOLS_END.length);
-  const block = `${TOOLS_START}\n${GENERATED_COMMENT}\n${tableMarkdown}\n${TOOLS_END}`;
-  return `${before}${block}${after}`;
-}
-
-async function writeIfChanged(path, content) {
-  let current = null;
   try {
-    current = await readFile(path, "utf8");
+    return injectBetweenMarkers(
+      guide,
+      TOOLS_START,
+      TOOLS_END,
+      `${GENERATED_COMMENT}\n${tableMarkdown}`,
+    );
   } catch {
-    // file does not exist yet
+    throw new Error("src/guide.md is missing the TOOLS markers");
   }
-  if (current === content) {
-    console.log(`unchanged: ${path}`);
-    return false;
-  }
-  await writeFile(path, content);
-  console.log(`wrote: ${path}`);
-  return true;
 }
 
 async function assertConnectOrderComplete() {

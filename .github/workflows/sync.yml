@@ -30,6 +30,8 @@ jobs:
         run: node scripts/build.mjs
         env:
           WEBACY_API_KEY: ${{ secrets.WEBACY_API_KEY }}
+      - name: Regenerate x402 skill
+        run: node scripts/build-x402.mjs
       - name: Open PR on drift
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
@@ -37,7 +39,8 @@ jobs:
           commit-message: "chore: sync Webacy tools + regenerate client artifacts"
           branch: chore/sync-webacy-tools
           body: |
-            Automated regeneration of the generated client artifacts from the live
-            Webacy MCP tool list (`api.webacy.com/mcp`).
-
-            Requires the `WEBACY_API_KEY` repository secret.
+            Automated regeneration of the generated client artifacts:
+            - the `webacy` skill + `AGENTS.md`, from the live Webacy MCP tool list
+              (`api.webacy.com/mcp`; requires the `WEBACY_API_KEY` repository secret).
+            - the `webacy-x402` skill, from the public OpenAPI spec
+              (`docs.webacy.com/openapi.json`; no secret required).

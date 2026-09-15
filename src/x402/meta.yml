@@ -1,0 +1,6 @@
+name: webacy-x402
+description: >-
+  Call the Webacy onchain risk API pay-per-request via x402 - USDC on Base, no
+  API key. Use whenever an agent has a Base wallet with USDC and needs wallet,
+  token, contract, or DeFi vault risk data (sanctions exposure, holder
+  analysis, RWA/stablecoin depeg risk) without provisioning an API key.
