@@ -83,6 +83,9 @@ flow above.
 | GET | `/contracts/{contractAddress}` | Get a real-time analysis for a given contract address |
 | GET | `/contracts/{contractAddress}/code-analysis` | Get only the source-code findings for a contract |
 | GET | `/quick-profile/{walletAddress}` | Understand the Risk Profile / Risk Exposure of an Address |
+| POST | `/scan/{fromAddress}/eip712` | Scan EIP-712 Signed Message for Security Risks |
+| POST | `/scan/{fromAddress}/transactions` | Scan Raw EVM Transaction for Security Risks |
+| GET | `/source-code/{contractAddress}` | Get verified source code for a contract |
 | GET | `/trading-lite/{address}` | Get simplified token analysis with security indicators |
 | GET | `/transactions/{txHash}` | Risk Details for a Transaction |
 | POST | `/url` | Project URL Risk Analysis |
@@ -100,15 +103,12 @@ answer (network hiccup, unexpected status) — don't read anything into it eithe
 <!-- Auto-generated from docs.webacy.com/openapi.json. Do not edit by hand. -->
 | Method | Path | Status | Description |
 | --- | --- | --- | --- |
-| GET | `/contracts/{contractAddress}/source-code` | unverified (probe failed or returned an unexpected status) | Get verified source code for a contract |
 | GET | `/holder-analysis/{address}` | 401 - gateway pending | Get detailed early holder analysis for a token |
 | GET | `/rwa` | 401 - gateway pending | List pegged tokens with depeg risk data and aggregates |
 | GET | `/rwa/{address}` | 401 - gateway pending | Get detailed depeg risk data for a specific pegged token |
 | GET | `/rwa/hci` | 401 - gateway pending | List Holder Concentration Index |
 | GET | `/rwa/supply` | 401 - gateway pending | List pegged-token supply flows (mint/burn velocity) |
 | GET | `/rwa/supply/{symbol}` | 401 - gateway pending | Get supply-flow detail for a single token by symbol |
-| POST | `/scan/{fromAddress}/eip712` | 403 - not available via x402 | Scan EIP-712 Signed Message for Security Risks |
-| POST | `/scan/{fromAddress}/transactions` | 403 - not available via x402 | Scan Raw EVM Transaction for Security Risks |
 | GET | `/tokens/{tokenAddress}` | 401 - gateway pending | Get Token Economic History |
 | GET | `/tokens/{tokenAddress}/pools` | 401 - gateway pending | Get Token Pools with Risk Assessment |
 | GET | `/tokens/pools/{poolAddress}` | 401 - gateway pending | Get Pool OHLCV Data with Risk Assessment |
