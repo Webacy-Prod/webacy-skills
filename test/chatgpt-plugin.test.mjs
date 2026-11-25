@@ -194,6 +194,15 @@ test("validation runs the Agent Plugins schemas, allowing only OpenAI's auth ext
   assert.ok(errors.some((e) => e.includes('extensions may only hold "com.openai"')), errors.join("\n"));
 });
 
+test("validation checks the OAuth client object", async () => {
+  const withClient = (client) => mutated({ mcp: (m) => (server(m).extensions["com.openai"].auth.client = client) });
+  assert.ok((await withClient({})).some((e) => e.includes("auth.client.mode must be provided, dcr or cimd")));
+  assert.ok((await withClient({ mode: "provided" })).some((e) => e.includes("a provided client needs clientId")));
+  assert.ok((await withClient({ mode: "dcr", clientId: "x" })).some((e) => e.includes("must not set clientId")));
+  assert.deepEqual(await withClient(undefined), []);
+  assert.deepEqual(await withClient({ mode: "cimd" }), []);
+});
+
 test("assets skip dotfiles such as .DS_Store", async () => {
   const dir = join(ROOT, "src/chatgpt-plugin/assets");
   const junk = join(dir, ".DS_Store");

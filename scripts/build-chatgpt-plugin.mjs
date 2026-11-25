@@ -438,8 +438,19 @@ function validatePackage(files) {
     const auth = server.extensions?.["com.openai"]?.auth;
     if (auth?.type !== "oauth" && auth?.type !== "mixed")
       err(`mcp.json ${name} auth.type must be oauth (the portal has no API-key flow)`);
-    if (auth?.client && ["dcr", "cimd"].includes(auth.client.mode) && auth.client.clientId)
-      err(`mcp.json ${name}: a ${auth.client.mode} client must not set clientId`);
+    // client rules from the OAuth configuration reference:
+    // https://developers.openai.com/plugins/build/plugins#oauth-configuration-reference
+    if (auth?.client !== undefined) {
+      const client = auth.client;
+      if (!client || typeof client !== "object" || Array.isArray(client))
+        err(`mcp.json ${name} auth.client must be an object`);
+      else if (!["provided", "dcr", "cimd"].includes(client.mode))
+        err(`mcp.json ${name} auth.client.mode must be provided, dcr or cimd when client is present`);
+      else if (client.mode === "provided" && !client.clientId)
+        err(`mcp.json ${name}: a provided client needs clientId`);
+      else if (client.mode !== "provided" && client.clientId)
+        err(`mcp.json ${name}: a ${client.mode} client must not set clientId`);
+    }
   }
 
   // Review cases: exactly 5 positive and 3 negative for initial MCP review.
