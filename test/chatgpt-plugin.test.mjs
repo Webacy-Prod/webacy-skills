@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -179,6 +179,32 @@ test("validation rejects a skill whose name does not match its directory", async
   assert.ok(errors.some((e) => e.includes('skills/other/SKILL.md name must be "other"')));
 });
 
+test("validation runs the Agent Plugins schemas, allowing only OpenAI's auth extension", async () => {
+  const errors = await mutated({
+    manifest: (m) => {
+      m.name = "Not A Valid Name";
+    },
+    mcp: (m) => {
+      server(m).timeout = 30;
+      server(m).extensions.other = {};
+    },
+  });
+  assert.ok(errors.some((e) => e.startsWith("plugin.json/name fails the Agent Plugins schema")), errors.join("\n"));
+  assert.ok(errors.some((e) => e.startsWith("mcp.json/mcpServers/webacy fails the Agent Plugins schema")), errors.join("\n"));
+  assert.ok(errors.some((e) => e.includes('extensions may only hold "com.openai"')), errors.join("\n"));
+});
+
+test("assets skip dotfiles such as .DS_Store", async () => {
+  const dir = join(ROOT, "src/chatgpt-plugin/assets");
+  const junk = join(dir, ".DS_Store");
+  await writeFile(junk, "junk");
+  try {
+    assert.ok(![...(await assemble()).keys()].some((k) => k.split("/").some((seg) => seg.startsWith("."))));
+  } finally {
+    await rm(junk, { force: true });
+  }
+});
+
 test("parseFrontmatter handles folded and plain scalars", () => {
   const fm = parseFrontmatter("---\nname: 'a'\ndescription: >-\n  one\n  two\n---\nbody\n");
   assert.deepEqual(fm.data, { name: "a", description: "one two" });
@@ -218,6 +244,7 @@ test("build script writes a valid ZIP with the plugin at the archive root", asyn
     });
     const files = readZip(await readFile(join(out, "webacy-chatgpt-plugin.zip")));
     assert.ok(files.has("plugin.json"));
+    assert.ok(![...files.keys()].some((k) => k.split("/").some((seg) => seg.startsWith("."))), "no dotfiles in the ZIP");
     assert.deepEqual(validatePackage(files), []);
     const unpacked = await readFile(join(out, "chatgpt-plugin", "plugin.json"));
     assert.ok(unpacked.equals(files.get("plugin.json")));

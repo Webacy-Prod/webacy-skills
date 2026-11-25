@@ -31,6 +31,8 @@ It also builds a **ChatGPT plugin** ZIP (see [ChatGPT plugin](#chatgpt-plugin)).
   (listing, review cases), `mcp.json` (server + OAuth), `connect.md`, `assets/`.
 - `scripts/build-chatgpt-plugin.mjs` — validates and zips the ChatGPT plugin into
   `dist/` (git-ignored).
+- `schemas/agent-plugins/1.0.0/` — vendored copies of the public Agent Plugins
+  schemas the plugin manifests declare; the build validates against them offline.
 
 ## Generated files
 
@@ -86,6 +88,13 @@ submission rules: field lengths, category, HTTPS listing URLs, icon size, brand 
 contrast, exactly 5 positive and 3 negative review cases naming real tools, OAuth
 (no API-key auth, headers or secrets), and archive path rules. Any violation fails
 the build. CI runs it on every PR and uploads the ZIP as a workflow artifact.
+
+Both manifests are also validated with ajv against the Agent Plugins schemas they
+declare. One documented exception: OpenAI puts MCP auth in a server-level
+`extensions["com.openai"]` block
+([MCP authentication](https://developers.openai.com/plugins/build/plugins#configure-mcp-authentication)),
+which the public `mcp.schema.json` doesn't allow yet, so that block is removed
+before the schema check and validated by the build's own auth rules instead.
 
 To change the listing or review cases, edit `src/chatgpt-plugin/plugin.json` and bump
 `version` before uploading a new version.

@@ -17,10 +17,11 @@
 // Output: dist/chatgpt-plugin/ (unpacked, for inspection) and
 // dist/webacy-chatgpt-plugin.zip. Override the directory with CHATGPT_PLUGIN_OUT_DIR.
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { realpathSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { deflateRawSync, inflateRawSync } from "node:zlib";
+import Ajv2020 from "ajv/dist/2020.js";
 import { fail } from "./lib.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -32,7 +33,21 @@ const PLUGIN_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.jso
 const MCP_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json";
 const GUIDE_HEADING = "# Webacy risk engine";
 
-// Category titles accepted by the dashboard (developers.openai.com/plugins/deploy/submission).
+// The public Agent Plugins schemas, vendored from the $schema URLs above so the
+// check runs offline. To refresh: download both URLs into schemas/agent-plugins/1.0.0/.
+const ajv = new Ajv2020({ allErrors: true, strict: false });
+const loadSchema = (name) =>
+  ajv.compile(JSON.parse(readFileSync(p("schemas", "agent-plugins", "1.0.0", name), "utf8")));
+const validatePluginSchema = loadSchema("plugin.schema.json");
+const validateMcpSchema = loadSchema("mcp.schema.json");
+
+// Report ajv errors as "<file><path> <message>" lines.
+const schemaErrors = (file, errors) =>
+  (errors ?? []).map((e) => `${file}${e.instancePath || ""} fails the Agent Plugins schema: ${e.message}`);
+
+// Category titles accepted by the dashboard. Copied by hand: last checked 2026-11-25
+// against https://developers.openai.com/plugins/deploy/submission. If the portal
+// rejects a value, the portal wins: update this list.
 const CATEGORIES = new Set([
   "Productivity",
   "Creativity",
@@ -49,7 +64,8 @@ const CATEGORIES = new Set([
   "Other",
 ]);
 
-// Upload limits (developers.openai.com/plugins/deploy/submission-errors).
+// Upload limits. Copied by hand: last checked 2026-11-25 against
+// https://developers.openai.com/plugins/deploy/submission-errors.
 const LIMITS = {
   zipBytes: 100 * 1024 * 1024,
   unpackedBytes: 512 * 1024 * 1024,
@@ -295,6 +311,8 @@ function validatePackage(files) {
   }
   walkKeys("plugin.json", manifest);
   if (manifest.$schema !== PLUGIN_SCHEMA) err(`plugin.json $schema must be ${PLUGIN_SCHEMA}`);
+  if (!validatePluginSchema(manifest))
+    errors.push(...schemaErrors("plugin.json", validatePluginSchema.errors));
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(manifest.name ?? "") || manifest.name.length > 64)
     err("plugin.json name must be lowercase letters, numbers and hyphens, max 64");
   if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/.test(manifest.version ?? ""))
@@ -395,6 +413,21 @@ function validatePackage(files) {
   }
   walkKeys("mcp.json", mcp);
   if (mcp.$schema !== MCP_SCHEMA) err(`mcp.json $schema must be ${MCP_SCHEMA}`);
+  // The public schema closes each server object (additionalProperties: false), but
+  // OpenAI's docs put auth in a server-level extensions["com.openai"] block and show
+  // it next to this same $schema:
+  // https://developers.openai.com/plugins/build/plugins#configure-mcp-authentication
+  // So check everything else against the schema with that one block removed; the
+  // auth checks below cover the block itself.
+  for (const [name, server] of Object.entries(mcp.mcpServers ?? {})) {
+    const extKeys = Object.keys(server?.extensions ?? {});
+    if (extKeys.some((k) => k !== "com.openai"))
+      err(`mcp.json ${name}.extensions may only hold "com.openai", found ${extKeys.join(", ")}`);
+  }
+  const mcpForSchema = structuredClone(mcp);
+  for (const server of Object.values(mcpForSchema.mcpServers ?? {}))
+    if (server && typeof server === "object") delete server.extensions;
+  if (!validateMcpSchema(mcpForSchema)) errors.push(...schemaErrors("mcp.json", validateMcpSchema.errors));
   const servers = Object.entries(mcp.mcpServers ?? {});
   if (servers.length !== 1) err(`mcp.json must declare exactly one server, found ${servers.length}`);
   for (const [name, server] of servers) {
@@ -445,9 +478,12 @@ function buildSkill(metaRaw, connect, generatedSkill) {
   return `---\n${metaRaw.trim()}\n---\n\n${guide}\n\n${connect.trim()}\n`;
 }
 
+// List regular files under dir, skipping dotfiles (.DS_Store and the like) so
+// editor and OS litter never ships in the ZIP.
 async function listFiles(dir, prefix = "") {
   const out = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith(".")) continue;
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) out.push(...(await listFiles(join(dir, entry.name), rel)));
     else if (entry.isFile()) out.push(rel);
