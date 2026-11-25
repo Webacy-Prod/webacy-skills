@@ -111,7 +111,8 @@ Done by a person in the OpenAI dashboard
    identity, and upload `webacy-chatgpt-plugin.zip`.
 3. Under **MCPs**, connect the server. Before domain verification, configure
    `https://api.webacy.com/.well-known/openai-apps-challenge` to return the token the
-   portal shows, as plain text (that path has no route today). Then complete domain
+   portal shows, as plain text (that path has no route yet; tracked in
+   [WEB-7113](https://linear.app/webacy/issue/WEB-7113)). Then complete domain
    verification, authorize with a Webacy account, and wait for the tool scan.
 4. Fill in what the package can't carry: a demo recording URL and reviewer test
    credentials (a Webacy account without MFA).
