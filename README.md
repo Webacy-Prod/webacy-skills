@@ -100,9 +100,10 @@ Done by a person in the OpenAI dashboard
    can't submit MCP plugins.
 2. At platform.openai.com/plugins, choose **Upload new or existing plugin**, pick the
    identity, and upload `webacy-chatgpt-plugin.zip`.
-3. Under **MCPs**, connect the server. Domain verification serves the token the
-   portal shows as plain text at `https://api.webacy.com/.well-known/openai-apps-challenge`.
-   Authorize with a Webacy account, then wait for the tool scan.
+3. Under **MCPs**, connect the server. Before domain verification, configure
+   `https://api.webacy.com/.well-known/openai-apps-challenge` to return the token the
+   portal shows, as plain text (that path has no route today). Then complete domain
+   verification, authorize with a Webacy account, and wait for the tool scan.
 4. Fill in what the package can't carry: a demo recording URL and reviewer test
    credentials (a Webacy account without MFA).
 5. Submit for review. After approval, choose when to publish. The MCP URL can't
