@@ -9,6 +9,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:x402": "node scripts/build-x402.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "build:chatgpt-plugin": "node scripts/build-chatgpt-plugin.mjs"
   }
 }
