@@ -74,6 +74,15 @@ const LIMITS = {
   imageBytes: 5 * 1024 * 1024,
 };
 
+// Minimum icon sizes for submission. The upload accepts 48 px for everything, but
+// OpenAI's Plugin Creator (prepare-plugin-submission, references/listing.md) asks
+// for listing logos of at least 256 px; composer icons stay at 48 px.
+// Copied by hand: last checked 2026-11-26 against plugin-creator 0.1.28.
+const MIN_ICON_PX = { logo: 256, logoDark: 256, composerIcon: 48, composerIconDark: 48 };
+
+// review.prompts limits, from the same Plugin Creator reference (review-materials.md).
+const REVIEW_PROMPTS = { max: 20, chars: 4000 };
+
 // Keys the upload rejects anywhere in the manifests: secrets belong in the portal.
 const FORBIDDEN_KEYS = new Set(["clientSecret", "test_credentials", "reviewer_instructions"]);
 
@@ -375,7 +384,8 @@ function validatePackage(files) {
     const size = pngSize(img);
     if (!size) err(`${ref} must be a PNG (the build only checks PNG dimensions)`);
     else if (size.width !== size.height) err(`${ref} must be square, got ${size.width}x${size.height}`);
-    else if (size.width < 48 || size.width > 4096) err(`${ref} must be 48 to 4096 px, got ${size.width}`);
+    else if (size.width < MIN_ICON_PX[key] || size.width > 4096)
+      err(`interface.${key} ${ref} must be ${MIN_ICON_PX[key]} to 4096 px, got ${size.width}`);
   }
 
   // Skills: immediate children of skills/, each with a valid SKILL.md.
@@ -469,6 +479,17 @@ function validatePackage(files) {
     for (const key of ["description", "prompt"])
       if (!c?.[key]) err(`review.test_cases.negative[${i}].${key} is required`);
   });
+  const reviewPrompts = ext.review?.prompts;
+  if (reviewPrompts !== undefined) {
+    if (!Array.isArray(reviewPrompts)) err("review.prompts must be an array of strings");
+    else {
+      if (reviewPrompts.length > REVIEW_PROMPTS.max) err(`review.prompts: max ${REVIEW_PROMPTS.max}`);
+      reviewPrompts.forEach((p, i) => {
+        if (typeof p !== "string" || !p.trim()) err(`review.prompts[${i}] must be a nonblank string`);
+        else checkLen(`review.prompts[${i}]`, p, REVIEW_PROMPTS.chars);
+      });
+    }
+  }
   if (ext.review?.commerce !== undefined && typeof ext.review.commerce !== "boolean")
     err("review.commerce must be a boolean");
   if (ext.onboardingSkill && !files.has(ext.onboardingSkill.replace(/^\.\//, "")))

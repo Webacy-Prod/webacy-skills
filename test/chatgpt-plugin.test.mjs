@@ -172,6 +172,38 @@ test("validation rejects unsafe archive paths and missing or non-square icons", 
   assert.ok(errors.some((e) => e.includes("empty, . or .. segment")));
 });
 
+test("validation requires a 256 px listing logo but allows a 48 px composer icon", async () => {
+  const png = (px) => {
+    const b = Buffer.alloc(24);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b);
+    b.write("IHDR", 12, "latin1");
+    b.writeUInt32BE(px, 16);
+    b.writeUInt32BE(px, 20);
+    return b;
+  };
+  const errors = await mutated({
+    manifest: (m) => {
+      ui(m).logo = "./assets/small.png";
+      ui(m).composerIcon = "./assets/tiny.png";
+    },
+    files: (files) => {
+      files.set("assets/small.png", png(200));
+      files.set("assets/tiny.png", png(48));
+    },
+  });
+  assert.deepEqual(errors, ["interface.logo ./assets/small.png must be 256 to 4096 px, got 200"]);
+});
+
+test("validation checks review.prompts", async () => {
+  const withPrompts = (prompts) =>
+    mutated({ manifest: (m) => (m.extensions["com.openai"].review.prompts = prompts) });
+  assert.ok((await withPrompts("one")).some((e) => e.includes("review.prompts must be an array")));
+  assert.ok((await withPrompts(["ok", " "])).some((e) => e.includes("review.prompts[1] must be a nonblank string")));
+  assert.ok((await withPrompts(Array(21).fill("p"))).some((e) => e.includes("review.prompts: max 20")));
+  assert.ok((await withPrompts(["x".repeat(4001)])).some((e) => e.includes("review.prompts[0] is 4001 characters")));
+  assert.deepEqual(await withPrompts([]), []);
+});
+
 test("validation rejects a skill whose name does not match its directory", async () => {
   const errors = await mutated({
     files: (files) => files.set("skills/other/SKILL.md", Buffer.from("---\nname: webacy\ndescription: d\n---\nbody\n")),
@@ -225,7 +257,7 @@ test("contrastRatio and pngSize", async () => {
   assert.equal(Math.round(contrastRatio("#000000", "#FFFFFF")), 21);
   assert.equal(contrastRatio("#123456", "#123456"), 1);
   const logo = await readFile(join(ROOT, "src/chatgpt-plugin/assets/logo.png"));
-  assert.deepEqual(pngSize(logo), { width: 200, height: 200 });
+  assert.deepEqual(pngSize(logo), { width: 256, height: 256 });
   assert.equal(pngSize(Buffer.from("not a png")), null);
 });
 

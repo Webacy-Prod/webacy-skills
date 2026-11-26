@@ -53,50 +53,57 @@
         "logo": "./assets/logo.png"
       },
       "review": {
+        "prompts": [
+          "Is it safe to send USDT to 0x098B716B8Aaf21512996dC57EB0615e2383E2f96?",
+          "Before I buy it, check this token for honeypot or rug-pull risk: 0x6982508145454Ce325dDbE47a25d4ec3d2311933",
+          "How likely is USDC to depeg right now, and what grade does Webacy give it?",
+          "Did snipers or bundled wallets buy this Solana token at launch? DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+          "Which ERC-4626 vaults on Ethereum are the safest to deposit USDC into?"
+        ],
         "test_cases": {
           "positive": [
             {
               "description": "Screen a sanctioned wallet address",
               "prompt": "Is it safe to send funds to 0x098B716B8Aaf21512996dC57EB0615e2383E2f96 on Ethereum?",
               "tools_triggered": "get_address_risk",
-              "expected_behavior": "Returns a high risk score for the address, names the risk factors (including OFAC sanctions exposure for this Ronin bridge exploiter address), and warns the user not to send funds."
+              "expected_behavior": "Calls get_address_risk with address 0x098B716B8Aaf21512996dC57EB0615e2383E2f96 and chain eth. Reports the returned high risk score and the risk factors in the response, including OFAC sanctions exposure (this is the Ronin bridge exploiter address), and warns the user not to send funds."
             },
             {
               "description": "Check a token contract for scam and security flags",
               "prompt": "Check the token 0x6982508145454Ce325dDbE47a25d4ec3d2311933 on Ethereum for honeypot or scam risk.",
               "tools_triggered": "get_token_risk",
-              "expected_behavior": "Returns the token's risk score and security flags (honeypot, ownership, tax, liquidity) with market data, and summarizes whether anything is concerning."
+              "expected_behavior": "Calls get_token_risk with address 0x6982508145454Ce325dDbE47a25d4ec3d2311933 (PEPE) and chain eth. Reports the returned risk score and security flags (honeypot, ownership, tax, liquidity) with market data, and says whether any returned flag is concerning without claiming flags the response does not contain."
             },
             {
               "description": "Assess stablecoin depeg risk",
               "prompt": "What is the depeg risk for USDC (0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48) on Ethereum?",
               "tools_triggered": "get_rwa_token_risk",
-              "expected_behavior": "Returns USDC's peg-stability risk and Webacy letter grade, and explains the main factors behind the rating instead of a generic token risk check."
+              "expected_behavior": "Calls get_rwa_token_risk (not get_token_risk) with address 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 and chain eth. Reports USDC's returned peg-stability risk and Webacy letter grade, and explains the main factors behind the rating from the response."
             },
             {
               "description": "Analyze a token's holder distribution",
               "prompt": "Analyze the holder distribution of the Solana token DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263. Were there snipers or bundled buyers at launch?",
               "tools_triggered": "get_holder_analysis",
-              "expected_behavior": "Returns holder counts, top-holder concentration, and sniper and bundled-buyer metrics for the token, and states whether the launch looks manipulated."
+              "expected_behavior": "Calls get_holder_analysis with address DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263 (BONK) and chain sol. Reports the returned holder count, top-holder concentration, and sniper and bundled-buyer metrics, and states whether the launch looks manipulated based on those numbers."
             },
             {
               "description": "Rank DeFi vaults by risk",
               "prompt": "Show me the five riskiest ERC-4626 vaults on Ethereum and their Webacy grades.",
               "tools_triggered": "list_vaults",
-              "expected_behavior": "Lists vaults sorted by risk with each vault's risk score, risk tier, TVL, and A+ to F grade."
+              "expected_behavior": "Calls list_vaults with chain eth and sort score_desc (highest risk first), page_size 5. Lists five vaults from the response, each with its risk score, risk tier, TVL, and A+ to F grade (or says the grade is unavailable when the response has none)."
             }
           ],
           "negative": [
             {
-              "description": "Moving funds is out of scope; Webacy is read-only and must not attempt a transfer",
+              "description": "Moving funds is out of scope. Must not call any Webacy tool or claim a transfer happened; explains that Webacy is read-only and cannot send funds, and may offer to check the recipient's risk instead.",
               "prompt": "Send 1 ETH from my wallet to vitalik.eth."
             },
             {
-              "description": "Price predictions and investment advice are out of scope",
+              "description": "Price predictions and investment advice are out of scope. Must not call any Webacy tool or present a risk score as a price forecast; explains that Webacy scores onchain risk and does not predict prices or give financial advice.",
               "prompt": "Will Bitcoin's price go up next week? Should I buy now?"
             },
             {
-              "description": "Unrelated request that should not call any Webacy tool",
+              "description": "Unrelated request. Must not call any Webacy tool; answers normally without mentioning Webacy.",
               "prompt": "Write a short poem about the ocean."
             }
           ]

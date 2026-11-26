@@ -67,10 +67,10 @@ It uses OpenAI's portable package format
 ([submission docs](https://developers.openai.com/plugins/deploy/submission)):
 
 ```
-plugin.json              # identity, listing (extensions.com.openai.interface), review cases
+plugin.json              # identity, listing (extensions.com.openai.interface), review prompts and cases
 mcp.json                 # one streamable-http server, auth: { type: oauth, client: { mode: dcr } }
 skills/webacy/SKILL.md   # guide + synced tools table, API-key instructions swapped for OAuth notes
-assets/logo.png          # logo and composer icon (square PNG)
+assets/logo.png          # logo and composer icon (256x256 PNG, from developers.webacy.com/icon-256.png)
 ```
 
 ### Build
@@ -84,8 +84,10 @@ The skill comes from the generated `skills/webacy/SKILL.md`, so the plugin picks
 the weekly tool sync without network access. Before writing the ZIP, the build checks
 the package against OpenAI's documented
 [upload](https://developers.openai.com/plugins/deploy/submission-errors) and
-submission rules: field lengths, category, HTTPS listing URLs, icon size, brand color
-contrast, exactly 5 positive and 3 negative review cases naming real tools, OAuth
+submission rules: field lengths, category, HTTPS listing URLs, icon size (listing logo
+at least 256 px, per OpenAI's Plugin Creator `prepare-plugin-submission` checklist),
+brand color contrast, review prompts, exactly 5 positive and 3 negative review cases
+naming real tools, OAuth
 (no API-key auth, headers or secrets), and archive path rules. Any violation fails
 the build. CI runs it on every PR and uploads the ZIP as a workflow artifact.
 
@@ -113,9 +115,12 @@ Done by a person in the OpenAI dashboard
    `https://api.webacy.com/.well-known/openai-apps-challenge` to return the token the
    portal shows, as plain text (that path has no route yet; tracked in
    [WEB-7113](https://linear.app/webacy/issue/WEB-7113)). Then complete domain
-   verification, authorize with a Webacy account, and wait for the tool scan.
-4. Fill in what the package can't carry: a demo recording URL and reviewer test
-   credentials (a Webacy account without MFA).
+   verification, authorize with a Webacy account, and wait for the tool scan. The scan
+   expects `readOnlyHint`, `openWorldHint` and `destructiveHint` annotations on every
+   tool; the server doesn't set them yet (tracked in
+   [WEB-7127](https://linear.app/webacy/issue/WEB-7127)).
+4. Fill in what the package can't carry: a demo recording URL, supported countries,
+   and reviewer test credentials (a Webacy account without MFA).
 5. Submit for review. After approval, choose when to publish. The MCP URL can't
    change after publication.
 
