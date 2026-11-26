@@ -456,9 +456,9 @@ function validatePackage(files) {
         err(`mcp.json ${name} auth.client must be an object`);
       else if (!["provided", "dcr", "cimd"].includes(client.mode))
         err(`mcp.json ${name} auth.client.mode must be provided, dcr or cimd when client is present`);
-      else if (client.mode === "provided" && !client.clientId)
-        err(`mcp.json ${name}: a provided client needs clientId`);
-      else if (client.mode !== "provided" && client.clientId)
+      else if (client.mode === "provided" && (typeof client.clientId !== "string" || !client.clientId.trim()))
+        err(`mcp.json ${name}: a provided client needs clientId as a nonblank string`);
+      else if (client.mode !== "provided" && client.clientId !== undefined)
         err(`mcp.json ${name}: a ${client.mode} client must not set clientId`);
     }
   }
