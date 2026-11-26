@@ -1,0 +1,119 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "webacy",
+  "version": "1.0.0",
+  "description": "Onchain security and risk checks from Webacy: wallet and address risk, token and smart-contract risk, sanctions and fund-flow exposure, token holder (sniper/bundler) analysis, ERC-4626 vault risk, and stablecoin/RWA depeg risk across 14+ chains.",
+  "author": {
+    "name": "Webacy",
+    "email": "support@webacy.com",
+    "url": "https://www.webacy.com"
+  },
+  "homepage": "https://docs.webacy.com/integrations/mcp-server",
+  "repository": "https://github.com/Webacy-Prod/webacy-skills",
+  "license": "MIT",
+  "keywords": [
+    "security",
+    "blockchain",
+    "crypto",
+    "risk",
+    "wallet",
+    "token",
+    "sanctions",
+    "stablecoin",
+    "defi"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Webacy",
+        "shortDescription": "Onchain risk and safety checks",
+        "longDescription": "Webacy checks whether something onchain is safe before you interact with it. Ask about a wallet, token, smart contract, DeFi vault, or stablecoin and Webacy returns a 0-100 risk score with the reasons behind it.\n\nWhat you can do:\n- Screen a wallet or contract address for risk, sanctions exposure, and fund flows to mixers, hackers, and drainers.\n- Check a token for honeypot, scam, and contract security flags, plus market and economic risk.\n- Analyze a token's holder distribution, including sniper and bundled-buyer activity at launch.\n- Assess stablecoin, RWA, and pegged-token depeg risk.\n- Look up or rank ERC-4626 vaults by risk, with Webacy's A+ to F letter grade.\n\nWho it is for: traders, wallet users, analysts, and compliance teams who want a fast second opinion on onchain risk.\n\nLimitations: Webacy is read-only. It never moves funds, signs transactions, or connects to your wallet. Scores are risk signals, not financial advice or a guarantee that an asset is safe. Coverage depends on the chain; an inconclusive sanctions screening is reported as inconclusive, never as clean. Usage counts against the plan of the Webacy account you connect.",
+        "developerName": "Webacy",
+        "category": "Security",
+        "capabilities": [
+          "Wallet and address risk scoring",
+          "Sanctions and fund-flow exposure screening",
+          "Token and smart-contract risk analysis",
+          "Token holder, sniper, and bundler analysis",
+          "Stablecoin and RWA depeg risk",
+          "ERC-4626 vault risk and letter grades"
+        ],
+        "websiteURL": "https://www.webacy.com",
+        "supportURL": "https://developers.webacy.com/contact",
+        "privacyPolicyURL": "https://www.webacy.com/privacy-policy",
+        "termsOfServiceURL": "https://developers.webacy.com/terms-of-use",
+        "defaultPrompt": [
+          "Is this wallet safe to send funds to? 0x098B716B8Aaf21512996dC57EB0615e2383E2f96",
+          "Check this token for honeypot or scam risk: 0x6982508145454Ce325dDbE47a25d4ec3d2311933",
+          "What is the current depeg risk for USDC on Ethereum?"
+        ],
+        "brandColor": "#191B44",
+        "brandColorDark": "#0B90A3",
+        "composerIcon": "./assets/logo.png",
+        "logo": "./assets/logo.png"
+      },
+      "review": {
+        "prompts": [
+          "Is it safe to send USDT to 0x098B716B8Aaf21512996dC57EB0615e2383E2f96?",
+          "Before I buy it, check this token for honeypot or rug-pull risk: 0x6982508145454Ce325dDbE47a25d4ec3d2311933",
+          "How likely is USDC to depeg right now, and what grade does Webacy give it?",
+          "Did snipers or bundled wallets buy this Solana token at launch? DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+          "Which ERC-4626 vaults on Ethereum are the safest to deposit USDC into?"
+        ],
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Screen a sanctioned wallet address",
+              "prompt": "Is it safe to send funds to 0x098B716B8Aaf21512996dC57EB0615e2383E2f96 on Ethereum?",
+              "tools_triggered": "get_address_risk",
+              "expected_behavior": "Calls get_address_risk with address 0x098B716B8Aaf21512996dC57EB0615e2383E2f96 and chain eth. Reports the returned high risk score and the risk factors in the response, including OFAC sanctions exposure (this is the Ronin bridge exploiter address), and warns the user not to send funds."
+            },
+            {
+              "description": "Check a token contract for scam and security flags",
+              "prompt": "Check the token 0x6982508145454Ce325dDbE47a25d4ec3d2311933 on Ethereum for honeypot or scam risk.",
+              "tools_triggered": "get_token_risk",
+              "expected_behavior": "Calls get_token_risk with address 0x6982508145454Ce325dDbE47a25d4ec3d2311933 (PEPE) and chain eth. Reports the returned risk score and security flags (honeypot, ownership, tax, liquidity) with market data, and says whether any returned flag is concerning without claiming flags the response does not contain."
+            },
+            {
+              "description": "Assess stablecoin depeg risk",
+              "prompt": "What is the depeg risk for USDC (0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48) on Ethereum?",
+              "tools_triggered": "get_rwa_token_risk",
+              "expected_behavior": "Calls get_rwa_token_risk (not get_token_risk) with address 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 and chain eth. Reports USDC's returned peg-stability risk and Webacy letter grade, and explains the main factors behind the rating from the response."
+            },
+            {
+              "description": "Analyze a token's holder distribution",
+              "prompt": "Analyze the holder distribution of the Solana token DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263. Were there snipers or bundled buyers at launch?",
+              "tools_triggered": "get_holder_analysis",
+              "expected_behavior": "Calls get_holder_analysis with address DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263 (BONK) and chain sol. Reports the returned holder count, top-holder concentration, and sniper and bundled-buyer metrics, and states whether the launch looks manipulated based on those numbers."
+            },
+            {
+              "description": "Rank DeFi vaults by risk",
+              "prompt": "Show me the five riskiest ERC-4626 vaults on Ethereum and their Webacy grades.",
+              "tools_triggered": "list_vaults",
+              "expected_behavior": "Calls list_vaults with chain eth and sort score_desc (highest risk first), page_size 5. Lists five vaults from the response, each with its risk score, risk tier, TVL, and A+ to F grade (or says the grade is unavailable when the response has none)."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Moving funds is out of scope. Must not call any Webacy tool or claim a transfer happened; explains that Webacy is read-only and cannot send funds, and may offer to check the recipient's risk instead.",
+              "prompt": "Send 1 ETH from my wallet to vitalik.eth."
+            },
+            {
+              "description": "Price predictions and investment advice are out of scope. Must not call any Webacy tool or present a risk score as a price forecast; explains that Webacy scores onchain risk and does not predict prices or give financial advice.",
+              "prompt": "Will Bitcoin's price go up next week? Should I buy now?"
+            },
+            {
+              "description": "Unrelated request. Must not call any Webacy tool; answers normally without mentioning Webacy.",
+              "prompt": "Write a short poem about the ocean."
+            }
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "Webacy does not sell products or process payments in ChatGPT. Usage counts against the plan of the connected Webacy account."
+      },
+      "publication": {
+        "release_notes": "Initial release: address, token, holder, vault, and stablecoin/RWA risk checks through Webacy's hosted MCP server."
+      }
+    }
+  }
+}
